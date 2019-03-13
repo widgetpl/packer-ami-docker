@@ -5,7 +5,10 @@
     "eu_central_1_ami": "ami-090f10efc254eaf55",
     "name": "docker-ce-base",
     "eu_central_1_name": "ubuntu-bionic-docker-ce-base",
-    "ssh_username": "ubuntu"
+    "ssh_username": "ubuntu",
+    "docker_ebs_name": "xvdh",
+    "container_data_ebs_name": "xvdi",
+    "log_ebs_name": "xvdj"
   },
   "builders": [
     {
@@ -27,25 +30,56 @@
       },
       "tags": {
         "ami": "{{user `eu_central_1_name`}}"
-      }
+      },
+      "ami_block_device_mappings": [
+        {
+          "device_name": "{{user `docker_ebs_name`}}",
+          "delete_on_termination": true
+        },
+        {
+          "device_name": "{{user `container_data_ebs_name`}}",
+          "delete_on_termination": true
+        },
+        {
+          "device_name": "{{user `log_ebs_name`}}",
+          "delete_on_termination": true
+        }
+      ],
+      "launch_block_device_mappings": [
+        {
+          "device_name": "{{user `docker_ebs_name`}}",
+          "volume_size": 1,
+          "volume_type": "gp2",
+          "delete_on_termination": true
+        },
+        {
+          "device_name": "{{user `container_data_ebs_name`}}",
+          "volume_size": 1,
+          "volume_type": "gp2",
+          "delete_on_termination": true
+        },
+        {
+          "device_name": "{{user `log_ebs_name`}}",
+          "volume_size": 1,
+          "volume_type": "gp2",
+          "delete_on_termination": true
+        }
+      ]
     }
   ],
   "provisioners": [
     {
-      "type": "file",
-      "source": "bootstrap_docker_ce.sh",
-      "destination": "/tmp/bootstrap_docker_ce.sh"
+      "type": "shell",
+      "script": "devices_setup.sh",
+      "environment_vars": [
+        "DOCKER_EBS_NAME={{user `docker_ebs_name`}}",
+        "CONTAINER_DATA_EBS_NAME={{user `container_data_ebs_name`}}",
+        "LOG_EBS_NAME={{user `log_ebs_name`}}"
+      ]
     },
     {
       "type": "shell",
-      "execute_command": "echo 'packer' | sudo -S sh -c '{{ .Vars }} {{ .Path }}'",
-      "inline": [
-        "whoami",
-        "cd /tmp",
-        "chmod +x bootstrap_docker_ce.sh",
-        "ls -alh /tmp",
-        "./bootstrap_docker_ce.sh"
-      ]
+      "script": "bootstrap_docker_ce.sh"
     }
   ]
 }
